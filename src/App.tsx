@@ -3,7 +3,6 @@ import useLocalStorageState from "use-local-storage-state";
 import styled from "styled-components";
 import {
   Typography,
-  TextField,
   Button,
   List,
   ListItem,
@@ -76,7 +75,7 @@ function App() {
   });
   const [openDialog, setOpenDialog] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
-  const [newServings, setNewServings] = useState<number>(0);
+  const [_newServings, setNewServings] = useState<number>(0);
 
   useEffect(() => {
     if (recipes.length === 0) {
@@ -123,25 +122,6 @@ function App() {
     setEditingRecipe(recipe);
     setNewServings(recipe.servings);
     setOpenDialog(true);
-  };
-
-  const updateServings = () => {
-    if (editingRecipe && newServings > 0) {
-      const factor = newServings / editingRecipe.servings;
-      const updatedRecipe = {
-        ...editingRecipe,
-        servings: newServings,
-        ingredients: editingRecipe.ingredients.map((ing) => ({
-          ...ing,
-          amount: ing.amount * factor,
-        })),
-      };
-      setRecipes(
-        recipes.map((r) => (r.id === updatedRecipe.id ? updatedRecipe : r))
-      );
-      setOpenDialog(false);
-      setEditingRecipe(null);
-    }
   };
 
   return (
