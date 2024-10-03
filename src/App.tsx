@@ -10,164 +10,198 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
-  Checkbox,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import RestaurantIcon from "@mui/icons-material/Restaurant";
 
-interface Todo {
+interface Ingredient {
+  name: string;
+  amount: number;
+  unit: string;
+}
+
+interface Recipe {
   id: number;
-  text: string;
-  done: boolean;
+  name: string;
+  ingredients: Ingredient[];
+  instructions: string;
+  servings: number;
 }
 
 const AppContainer = styled.div`
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  background: linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%);
+  min-height: 100vh;
+  color: white;
 `;
 
 const StyledButton = styled(Button)`
   && {
     margin-top: 1rem;
+    background-color: #4CAF50;
+    color: white;
+    &:hover {
+      background-color: #45a049;
+    }
   }
 `;
 
-const StyledListItemText = styled(ListItemText)<{ done: boolean }>`
+const StyledList = styled(List)`
   && {
-    text-decoration: ${(props) => (props.done ? "line-through" : "none")};
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+`;
+
+const StyledListItem = styled(ListItem)`
+  && {
+    margin-bottom: 1rem;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
   }
 `;
 
 function App() {
-  const [todos, setTodos] = useLocalStorageState<Todo[]>("todos", {
+  const [recipes, setRecipes] = useLocalStorageState<Recipe[]>("recipes", {
     defaultValue: [],
   });
-  const [newTodo, setNewTodo] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editText, setEditText] = useState(""); // Add this line
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [newServings, setNewServings] = useState<number>(0);
 
   useEffect(() => {
-    if (todos.length === 0) {
-      const boilerplateTodos = [
-        { id: 1, text: "Install Node.js", done: false },
-        { id: 2, text: "Install Cursor IDE", done: false },
-        { id: 3, text: "Log into Github", done: false },
-        { id: 4, text: "Fork a repo", done: false },
-        { id: 5, text: "Make changes", done: false },
-        { id: 6, text: "Commit", done: false },
-        { id: 7, text: "Deploy", done: false },
+    if (recipes.length === 0) {
+      const boilerplateRecipes: Recipe[] = [
+        // ... (add 5 boilerplate recipes here)
       ];
-      setTodos(boilerplateTodos);
+      setRecipes(boilerplateRecipes);
     }
-  }, [todos, setTodos]);
+  }, [recipes, setRecipes]);
 
-  const handleAddTodo = () => {
-    if (newTodo.trim() !== "") {
-      setTodos([
-        ...todos,
-        { id: Date.now(), text: newTodo.trim(), done: false },
-      ]);
-      setNewTodo("");
-    }
+  const handleAddRecipe = () => {
+    setEditingRecipe({
+      id: Date.now(),
+      name: "",
+      ingredients: [],
+      instructions: "",
+      servings: 1,
+    });
+    setOpenDialog(true);
   };
 
-  const handleDeleteTodo = (id: number) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+  const handleDeleteRecipe = (id: number) => {
+    setRecipes(recipes.filter((recipe) => recipe.id !== id));
   };
 
-  const handleToggleTodo = (id: number) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, done: !todo.done } : todo
-      )
-    );
+  const handleEditRecipe = (recipe: Recipe) => {
+    setEditingRecipe({ ...recipe });
+    setOpenDialog(true);
   };
 
-  const handleEditTodo = (id: number) => {
-    setEditingId(id);
-    const todoToEdit = todos.find((todo) => todo.id === id);
-    if (todoToEdit) {
-      setEditText(todoToEdit.text);
-    }
-  };
-
-  const handleUpdateTodo = (id: number) => {
-    if (editText.trim() !== "") {
-      setTodos(
-        todos.map((todo) =>
-          todo.id === id ? { ...todo, text: editText.trim() } : todo
-        )
+  const handleSaveRecipe = () => {
+    if (editingRecipe) {
+      setRecipes(
+        recipes.map((r) => (r.id === editingRecipe.id ? editingRecipe : r))
       );
+    } else {
+      setRecipes([...recipes, { ...editingRecipe!, id: Date.now() }]);
     }
-    setEditingId(null);
-    setEditText("");
+    setOpenDialog(false);
+    setEditingRecipe(null);
+  };
+
+  const handleRecalculateServings = (recipe: Recipe) => {
+    setEditingRecipe(recipe);
+    setNewServings(recipe.servings);
+    setOpenDialog(true);
+  };
+
+  const updateServings = () => {
+    if (editingRecipe && newServings > 0) {
+      const factor = newServings / editingRecipe.servings;
+      const updatedRecipe = {
+        ...editingRecipe,
+        servings: newServings,
+        ingredients: editingRecipe.ingredients.map((ing) => ({
+          ...ing,
+          amount: ing.amount * factor,
+        })),
+      };
+      setRecipes(
+        recipes.map((r) => (r.id === updatedRecipe.id ? updatedRecipe : r))
+      );
+      setOpenDialog(false);
+      setEditingRecipe(null);
+    }
   };
 
   return (
     <AppContainer>
       <Typography variant="h4" component="h1" gutterBottom>
-        Todo List
+        Funky Recipe Book
       </Typography>
-      <TextField
-        fullWidth
-        variant="outlined"
-        label="New Todo"
-        value={newTodo}
-        onChange={(e) => setNewTodo(e.target.value)}
-        onKeyPress={(e) => e.key === "Enter" && handleAddTodo()}
-        autoFocus // Add this line to enable autofocus
-      />
       <StyledButton
         variant="contained"
         color="primary"
         fullWidth
-        onClick={handleAddTodo}
+        onClick={handleAddRecipe}
+        startIcon={<RestaurantIcon />}
       >
-        Add Todo
+        Add New Recipe
       </StyledButton>
-      <List>
-        {todos.map((todo) => (
-          <ListItem key={todo.id} dense>
-            <Checkbox
-              edge="start"
-              checked={todo.done}
-              onChange={() => handleToggleTodo(todo.id)}
+      <StyledList>
+        {recipes.map((recipe) => (
+          <StyledListItem key={recipe.id}>
+            <ListItemText
+              primary={recipe.name}
+              secondary={`Servings: ${recipe.servings}`}
             />
-            {editingId === todo.id ? (
-              <TextField
-                fullWidth
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                onBlur={() => handleUpdateTodo(todo.id)}
-                onKeyPress={(e) =>
-                  e.key === "Enter" && handleUpdateTodo(todo.id)
-                }
-                autoFocus
-              />
-            ) : (
-              <StyledListItemText primary={todo.text} done={todo.done} />
-            )}
             <ListItemSecondaryAction>
               <IconButton
                 edge="end"
                 aria-label="edit"
-                onClick={() => handleEditTodo(todo.id)}
+                onClick={() => handleEditRecipe(recipe)}
               >
                 <EditIcon />
               </IconButton>
               <IconButton
                 edge="end"
                 aria-label="delete"
-                onClick={() => handleDeleteTodo(todo.id)}
+                onClick={() => handleDeleteRecipe(recipe.id)}
               >
                 <DeleteIcon />
               </IconButton>
+              <Button
+                onClick={() => handleRecalculateServings(recipe)}
+                color="secondary"
+              >
+                Recalculate
+              </Button>
             </ListItemSecondaryAction>
-          </ListItem>
+          </StyledListItem>
         ))}
-      </List>
+      </StyledList>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>
+          {editingRecipe?.id ? "Edit Recipe" : "Add New Recipe"}
+        </DialogTitle>
+        <DialogContent>
+          {/* Add form fields for recipe editing */}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={handleSaveRecipe}>Save</Button>
+        </DialogActions>
+      </Dialog>
     </AppContainer>
   );
 }
